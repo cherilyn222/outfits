@@ -148,24 +148,28 @@
             .toolbar-inner {
                 align-items: stretch;
                 /* 手机上底部增加一些间距，避免内容粘连 */
-                padding-bottom: 16px; 
+                padding-bottom: 16px;
             }
+
             .toolbar-group {
                 /* 强制在小屏幕上垂直堆叠，每个元素占满一行 */
-                flex: 1 1 100%; 
+                flex: 1 1 100%;
                 min-width: unset;
             }
+
             /* 按钮组和备注也强制全宽 */
             .toolbar-note,
             .toolbar-buttons {
                 flex: 1 1 100%;
             }
+
             .toolbar-buttons {
                 /* 确保按钮依然并排，但占满一行 */
                 flex-direction: row;
                 gap: 8px;
             }
         }
+
         /* *** 优化结束 *** */
 
         /* 展示区域：整块单独背景，占满全屏 */
@@ -270,7 +274,7 @@
         <div class="toolbar-inner">
             <div class="toolbar-group">
                 <label class="toolbar-label">选择穿搭照片</label>
-                <input type="file" id="imageInput" accept="image/*" /> 
+                <input type="file" id="imageInput" accept="image/*" muptiple />
             </div>
 
             <div class="toolbar-group">
@@ -367,7 +371,6 @@
                     img.src = reader.result;
                 };
                 reader.onerror = reject;
-                // Reading as DataURL is necessary to load the image into the Image object
                 reader.readAsDataURL(file);
             });
         }
@@ -377,7 +380,6 @@
         // 2. Load function updated for LocalForage (returns a Promise)
         async function loadOutfitMetadata() {
             try {
-                // localforage.getItem is asynchronous
                 const list = await localforage.getItem(OUTFIT_LIST_KEY);
                 return list || [];
             } catch (e) {
@@ -389,11 +391,9 @@
         // 3. Save function updated for LocalForage (returns a Promise)
         async function saveOutfitMetadata(list) {
             try {
-                // localforage.setItem is asynchronous
                 await localforage.setItem(OUTFIT_LIST_KEY, list);
             } catch (e) {
                 console.error("LocalForage metadata save error", e);
-                // The storage limit alert should now be much less frequent
                 alert("存储失败，可能是浏览器权限问题或空间仍不足。");
             }
         }
@@ -405,7 +405,6 @@
             const seasonF = document.getElementById("seasonFilter").value;
             const occasionF = document.getElementById("occasionFilter").value;
 
-            // AWAIT the metadata list
             const outfits = await loadOutfitMetadata();
 
             grid.innerHTML = "";
@@ -421,7 +420,6 @@
                 return;
             }
 
-            // We use Promise.all to load all image blobs concurrently for better performance
             const imagePromises = filtered.map(o => localforage.getItem(o.id));
             const imageBlobs = await Promise.all(imagePromises);
 
@@ -434,14 +432,12 @@
                 const img = document.createElement("img");
 
                 if (imageBlob) {
-                    // CRITICAL: Create a temporary URL for the Blob to display it
                     img.src = URL.createObjectURL(imageBlob);
                     img.onload = () => {
-                        // Release the temporary URL after the image loads to prevent memory leaks
                         URL.revokeObjectURL(img.src);
                     };
                 } else {
-                    img.src = ""; // Handle case where image is missing
+                    img.src = "";
                     console.error(`Image Blob for ID ${o.id} not found.`);
                 }
 
@@ -486,19 +482,15 @@
                 const delBtn = document.createElement("button");
                 delBtn.textContent = "删除";
                 delBtn.className = "btn-secondary";
-                
-                // Delete button logic must also be async
+
                 delBtn.onclick = async () => {
                     if (!confirm("确定删除这套穿搭吗?")) return;
-                    
-                    // 1. Delete the large image blob from IndexedDB
+
                     await localforage.removeItem(o.id);
 
-                    // 2. Delete the metadata entry
                     const all = (await loadOutfitMetadata()).filter(x => x.id !== o.id);
                     await saveOutfitMetadata(all);
-                    
-                    // 3. Re-render the gallery
+
                     renderOutfits();
                 };
                 footer.appendChild(delBtn);
@@ -508,72 +500,93 @@
             });
         }
 
-        // Save button logic must now be async
+        // *** 更新后的保存逻辑：循环处理多张照片 ***
         document.getElementById("saveBtn").addEventListener("click", async () => {
             const fileInput = document.getElementById("imageInput");
             const season = document.getElementById("seasonInput").value;
             const occasion = document.getElementById("occasionInput").value;
             const note = document.getElementById("noteInput").value.trim();
 
-            if (!fileInput.files[0] || !season || !occasion) {
+            // 检查是否有文件被选中
+            if (!fileInput.files.length || !season || !occasion) {
                 alert("需要照片 + 季节 + 场合");
                 return;
             }
 
-            const file = fileInput.files[0];
-            // The ID will serve as the unique key for both the metadata entry and the image blob
-            const newId = Date.now() + "_" + Math.random().toString(16).slice(2);
+            const files = Array.from(fileInput.files); // 将 FileList 转换为数组以便使用 map 和 Promise.all
+            const list = await loadOutfitMetadata(); // 加载现有元数据列表
+            const newOutfits = [];
+            let successCount = 0;
+            let errorCount = 0;
 
             try {
-                // 1. Compress the file and get the binary Blob
-                const imageBlob = await fileToCompressedBlob(file);
+                // 使用 Promise.all 来并行处理所有文件的压缩和存储
+                const compressionAndStoragePromises = files.map(async (file) => {
+                    const newId = Date.now() + "_" + Math.random().toString(16).slice(2);
 
-                // 2. Save the image Blob to LocalForage (IndexedDB)
-                await localforage.setItem(newId, imageBlob);
+                    try {
+                        // 1. 压缩文件并获取 Blob
+                        const imageBlob = await fileToCompressedBlob(file);
 
-                // 3. Update the metadata list with the pointer (ID) to the Blob
-                const list = await loadOutfitMetadata();
-                list.push({
-                    id: newId,
-                    season,
-                    occasion,
-                    note,
-                    createdAt: Date.now()
+                        // 2. 保存 Blob 到 LocalForage (IndexedDB)
+                        await localforage.setItem(newId, imageBlob);
+
+                        // 3. 准备元数据
+                        newOutfits.push({
+                            id: newId,
+                            season,
+                            occasion,
+                            note,
+                            createdAt: Date.now()
+                        });
+                        successCount++;
+                    } catch (err) {
+                        console.error(`处理文件 ${file.name} 失败:`, err);
+                        errorCount++;
+                    }
                 });
-                await saveOutfitMetadata(list);
 
+                await Promise.all(compressionAndStoragePromises); // 等待所有文件处理完成
+
+                // 4. 将所有新保存的元数据添加到列表中，并整体保存
+                if (newOutfits.length > 0) {
+                    list.push(...newOutfits);
+                    await saveOutfitMetadata(list);
+                }
+
+                // 提示用户处理结果
+                if (errorCount > 0) {
+                    alert(`成功保存 ${successCount} 张照片。有 ${errorCount} 张照片处理失败。`);
+                } else {
+                    alert(`成功保存 ${successCount} 张照片。`);
+                }
+
+                // 清空输入框并刷新界面
                 fileInput.value = "";
                 document.getElementById("noteInput").value = "";
                 renderOutfits();
+
             } catch (err) {
-                console.error("Save Error:", err);
-                alert("图片处理或存储失败，请检查浏览器控制台或尝试使用小一点的图片。");
+                console.error("整体保存操作失败:", err);
+                alert("保存操作失败，请检查浏览器控制台。");
             }
         });
+        // *** 更新后的保存逻辑结束 ***
 
-        // Clear button logic must also be async
+
         document.getElementById("clearAllBtn").addEventListener("click", async () => {
             if (confirm("确定要把所有穿搭记录清空吗？这将只清空记录列表，不会立即删除图片数据，需要手动清理 IndexedDB。")) {
-                
-                // Clear the metadata list
-                await localforage.removeItem(OUTFIT_LIST_KEY); 
-                
-                // OPTIONAL: To delete ALL data (all image blobs and metadata) use:
-                // await localforage.clear(); 
-                
+                await localforage.removeItem(OUTFIT_LIST_KEY);
                 renderOutfits();
                 alert("记录列表已清空。");
             }
         });
 
-        // Filters still call renderOutfits
         document.getElementById("seasonFilter").addEventListener("change", renderOutfits);
         document.getElementById("occasionFilter").addEventListener("change", renderOutfits);
 
-        // Initial render
         renderOutfits();
     </script>
-
 </body>
 
 </html>
