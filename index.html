@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>My Outfits</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="faviconfinal.png?v=3">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="My Outfits">
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #e4d7ff;
+            /* 整体淡紫 */
+            color: #111827;
+            padding: 0;
+        }
+
+        /* 中间内容：标题用 */
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px 16px 0;
+            /* 去掉底部 padding，让它不会和 gallery 推开 */
+        }
+
+
+        h1 {
+            font-family: "Playfair Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 34px;
+            letter-spacing: 0.03em;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: #4b5563;
+            margin-bottom: 12px;
+        }
+
+        button {
+            border-radius: 999px;
+            border: none;
+            padding: 8px 18px;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+            font: inherit;
+        }
+
+        .btn-primary {
+            background: #111827;
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        /* 顶部工具条：全屏长方形 */
+        .toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+
+            width: 100%;
+            background: #c39eff;
+            border-radius: 0;
+            padding: 8px 24px;
+            margin-bottom: 0;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+        }
+
+        .toolbar-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .toolbar-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 120px;
+        }
+
+        .toolbar-label {
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .toolbar select,
+        .toolbar input[type="text"],
+        .toolbar input[type="file"] {
+            font: inherit;
+            height: 32px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+
+        .toolbar input[type="file"] {
+            padding: 2px;
+            background: transparent;
+            border: none;
+        }
+
+        .toolbar-buttons {
+            flex-direction: row;
+            gap: 6px;
+        }
+
+        .toolbar-buttons button {
+            height: 32px;
+            padding: 4px 14px;
+            font-size: 13px;
+        }
+
+        .toolbar-note {
+            flex: 2 1 220px;
+        }
+
+        /* *** 优化后的移动端布局 CSS *** */
+        @media (max-width: 800px) {
+            .toolbar-inner {
+                align-items: stretch;
+                /* 手机上底部增加一些间距，避免内容粘连 */
+                padding-bottom: 16px; 
+            }
+            .toolbar-group {
+                /* 强制在小屏幕上垂直堆叠，每个元素占满一行 */
+                flex: 1 1 100%; 
+                min-width: unset;
+            }
+            /* 按钮组和备注也强制全宽 */
+            .toolbar-note,
+            .toolbar-buttons {
+                flex: 1 1 100%;
+            }
+            .toolbar-buttons {
+                /* 确保按钮依然并排，但占满一行 */
+                flex-direction: row;
+                gap: 8px;
+            }
+        }
+        /* *** 优化结束 *** */
+
+        /* 展示区域：整块单独背景，占满全屏 */
+        .gallery {
+            width: 100%;
+            background: #f7eefe;
+            /* 更淡的紫色 */
+            padding: 0 24px 32px;
+            /* 顶部缩小，让它和 toolbar 连在一起 */
+            margin-top: 0;
+            /* 确保完全贴合 */
+        }
+
+
+        .gallery-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* 图片网格 */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 24px;
+            margin-top: 4px;
+        }
+
+        .card {
+            background: transparent;
+            box-shadow: none;
+            border-radius: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card img {
+            width: 100%;
+            aspect-ratio: 2 / 3;
+            object-fit: cover;
+            background: #e5e7eb;
+        }
+
+        .card-body {
+            padding: 6px 2px 0;
+            font-size: 13px;
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .tag {
+            padding: 1px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .note {
+            font-size: 12px;
+            color: #4b5563;
+            margin-top: 2px;
+        }
+
+        .card-body .note+.note {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        .card-footer {
+            padding: 4px 0;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .card-footer button {
+            font-size: 11px;
+            padding: 4px 10px;
+        }
+
+        @media (max-width: 700px) {
+            .grid {
+                /* 手机上图片网格可以更小一些 */
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <h1>My Outfits</h1>
+        <p class="subtitle">OUTFIT IDEAS</p>
+    </div>
+
+    <div class="toolbar">
+        <div class="toolbar-inner">
+            <div class="toolbar-group">
+                <label class="toolbar-label">选择穿搭照片</label>
+                <input type="file" id="imageInput" accept="image/*" /> 
+            </div>
+
+            <div class="toolbar-group">
+                <label class="toolbar-label">季节</label>
+                <select id="seasonInput">
+                    <option value="">季节</option>
+                    <option value="summer">summer</option>
+                    <option value="winter">winter</option>
+                </select>
+            </div>
+
+            <div class="toolbar-group">
+                <label class="toolbar-label">场合</label>
+                <select id="occasionInput">
+                    <option value="">场合</option>
+                    <option value="school">school</option>
+                    <option value="casual">casual</option>
+                    <option value="date">date</option>
+                    <option value="formal">formal</option>
+                    <option value="home">home</option>
+                </select>
+            </div>
+
+            <div class="toolbar-group toolbar-note">
+                <label class="toolbar-label">备注</label>
+                <input type="text" id="noteInput" placeholder="比如：考试 outfit / 咖啡约会" />
+            </div>
+
+            <div class="toolbar-group toolbar-buttons">
+                <button class="btn-primary" id="saveBtn">保存</button>
+                <button class="btn-secondary" id="clearAllBtn">清空</button>
+            </div>
+
+            <div class="toolbar-group">
+                <label class="toolbar-label">季节筛选</label>
+                <select id="seasonFilter">
+                    <option value="">全部</option>
+                    <option value="summer">summer</option>
+                    <option value="winter">winter</option>
+                </select>
+            </div>
+
+            <div class="toolbar-group">
+                <label class="toolbar-label">场合筛选</label>
+                <select id="occasionFilter">
+                    <option value="">全部</option>
+                    <option value="school">school</option>
+                    <option value="casual">casual</option>
+                    <option value="date">date</option>
+                    <option value="formal">formal</option>
+                    <option value="home">home</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="gallery">
+        <div class="gallery-inner">
+            <div id="grid" class="grid"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- ASYNCHRONOUS STORAGE AND COMPRESSION FUNCTIONS ---
+
+        // 1. New function to compress and output a binary Blob (required for IndexedDB/LocalForage)
+        function fileToCompressedBlob(file, maxWidth = 900) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const scale = Math.min(1, maxWidth / img.width);
+                        const w = img.width * scale;
+                        const h = img.height * scale;
+
+                        const canvas = document.createElement("canvas");
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0, w, h);
+
+                        // CRITICAL: Use toBlob() to get a binary file object (Blob)
+                        // quality 0.8 is set for good size reduction
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                resolve(blob);
+                            } else {
+                                reject(new Error("Canvas toBlob failed"));
+                            }
+                        }, "image/jpeg", 0.8);
+                    };
+                    img.onerror = reject;
+                    img.src = reader.result;
+                };
+                reader.onerror = reject;
+                // Reading as DataURL is necessary to load the image into the Image object
+                reader.readAsDataURL(file);
+            });
+        }
+
+        const OUTFIT_LIST_KEY = "outfit_metadata_list";
+
+        // 2. Load function updated for LocalForage (returns a Promise)
+        async function loadOutfitMetadata() {
+            try {
+                // localforage.getItem is asynchronous
+                const list = await localforage.getItem(OUTFIT_LIST_KEY);
+                return list || [];
+            } catch (e) {
+                console.error("LocalForage metadata load error", e);
+                return [];
+            }
+        }
+
+        // 3. Save function updated for LocalForage (returns a Promise)
+        async function saveOutfitMetadata(list) {
+            try {
+                // localforage.setItem is asynchronous
+                await localforage.setItem(OUTFIT_LIST_KEY, list);
+            } catch (e) {
+                console.error("LocalForage metadata save error", e);
+                // The storage limit alert should now be much less frequent
+                alert("存储失败，可能是浏览器权限问题或空间仍不足。");
+            }
+        }
+
+        // --- MAIN APPLICATION LOGIC ---
+
+        async function renderOutfits() {
+            const grid = document.getElementById("grid");
+            const seasonF = document.getElementById("seasonFilter").value;
+            const occasionF = document.getElementById("occasionFilter").value;
+
+            // AWAIT the metadata list
+            const outfits = await loadOutfitMetadata();
+
+            grid.innerHTML = "";
+
+            const filtered = outfits.filter(o => {
+                if (seasonF && o.season !== seasonF) return false;
+                if (occasionF && o.occasion !== occasionF) return false;
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = "<p style='font-size:13px;color:#6b7280;'>还没有符合筛选条件的穿搭，可以先上传几套</p>";
+                return;
+            }
+
+            // We use Promise.all to load all image blobs concurrently for better performance
+            const imagePromises = filtered.map(o => localforage.getItem(o.id));
+            const imageBlobs = await Promise.all(imagePromises);
+
+            filtered.forEach((o, index) => {
+                const imageBlob = imageBlobs[index];
+
+                const card = document.createElement("div");
+                card.className = "card";
+
+                const img = document.createElement("img");
+
+                if (imageBlob) {
+                    // CRITICAL: Create a temporary URL for the Blob to display it
+                    img.src = URL.createObjectURL(imageBlob);
+                    img.onload = () => {
+                        // Release the temporary URL after the image loads to prevent memory leaks
+                        URL.revokeObjectURL(img.src);
+                    };
+                } else {
+                    img.src = ""; // Handle case where image is missing
+                    console.error(`Image Blob for ID ${o.id} not found.`);
+                }
+
+                img.alt = "outfit";
+                card.appendChild(img);
+
+                const body = document.createElement("div");
+                body.className = "card-body";
+
+                const tags = document.createElement("div");
+                tags.className = "tags";
+
+                const t1 = document.createElement("span");
+                t1.className = "tag";
+                t1.textContent = o.season;
+                tags.appendChild(t1);
+
+                const t2 = document.createElement("span");
+                t2.className = "tag";
+                t2.textContent = o.occasion;
+                tags.appendChild(t2);
+
+                body.appendChild(tags);
+
+                if (o.note) {
+                    const note = document.createElement("div");
+                    note.className = "note";
+                    note.textContent = o.note;
+                    body.appendChild(note);
+                }
+
+                const time = document.createElement("div");
+                time.className = "note";
+                const d = new Date(o.createdAt);
+                time.textContent = d.toLocaleString();
+                body.appendChild(time);
+
+                card.appendChild(body);
+
+                const footer = document.createElement("div");
+                footer.className = "card-footer";
+                const delBtn = document.createElement("button");
+                delBtn.textContent = "删除";
+                delBtn.className = "btn-secondary";
+                
+                // Delete button logic must also be async
+                delBtn.onclick = async () => {
+                    if (!confirm("确定删除这套穿搭吗?")) return;
+                    
+                    // 1. Delete the large image blob from IndexedDB
+                    await localforage.removeItem(o.id);
+
+                    // 2. Delete the metadata entry
+                    const all = (await loadOutfitMetadata()).filter(x => x.id !== o.id);
+                    await saveOutfitMetadata(all);
+                    
+                    // 3. Re-render the gallery
+                    renderOutfits();
+                };
+                footer.appendChild(delBtn);
+                card.appendChild(footer);
+
+                grid.appendChild(card);
+            });
+        }
+
+        // Save button logic must now be async
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+            const fileInput = document.getElementById("imageInput");
+            const season = document.getElementById("seasonInput").value;
+            const occasion = document.getElementById("occasionInput").value;
+            const note = document.getElementById("noteInput").value.trim();
+
+            if (!fileInput.files[0] || !season || !occasion) {
+                alert("需要照片 + 季节 + 场合");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            // The ID will serve as the unique key for both the metadata entry and the image blob
+            const newId = Date.now() + "_" + Math.random().toString(16).slice(2);
+
+            try {
+                // 1. Compress the file and get the binary Blob
+                const imageBlob = await fileToCompressedBlob(file);
+
+                // 2. Save the image Blob to LocalForage (IndexedDB)
+                await localforage.setItem(newId, imageBlob);
+
+                // 3. Update the metadata list with the pointer (ID) to the Blob
+                const list = await loadOutfitMetadata();
+                list.push({
+                    id: newId,
+                    season,
+                    occasion,
+                    note,
+                    createdAt: Date.now()
+                });
+                await saveOutfitMetadata(list);
+
+                fileInput.value = "";
+                document.getElementById("noteInput").value = "";
+                renderOutfits();
+            } catch (err) {
+                console.error("Save Error:", err);
+                alert("图片处理或存储失败，请检查浏览器控制台或尝试使用小一点的图片。");
+            }
+        });
+
+        // Clear button logic must also be async
+        document.getElementById("clearAllBtn").addEventListener("click", async () => {
+            if (confirm("确定要把所有穿搭记录清空吗？这将只清空记录列表，不会立即删除图片数据，需要手动清理 IndexedDB。")) {
+                
+                // Clear the metadata list
+                await localforage.removeItem(OUTFIT_LIST_KEY); 
+                
+                // OPTIONAL: To delete ALL data (all image blobs and metadata) use:
+                // await localforage.clear(); 
+                
+                renderOutfits();
+                alert("记录列表已清空。");
+            }
+        });
+
+        // Filters still call renderOutfits
+        document.getElementById("seasonFilter").addEventListener("change", renderOutfits);
+        document.getElementById("occasionFilter").addEventListener("change", renderOutfits);
+
+        // Initial render
+        renderOutfits();
+    </script>
+
+</body>
+
+</html>
