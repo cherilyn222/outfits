@@ -19,6 +19,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 
     <style>
+        /* CSS Reset and Global Styles */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -26,19 +27,16 @@
         }
 
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacMacSystemFont, "Segoe UI", sans-serif;
             background: #e4d7ff;
-            /* 整体淡紫 */
             color: #111827;
             padding: 0;
         }
 
-        /* 中间内容：标题用 */
         .page {
             max-width: 1200px;
             margin: 0 auto;
             padding: 16px 16px 0;
-            /* 去掉底部 padding，让它不会和 gallery 推开 */
         }
 
 
@@ -75,17 +73,15 @@
             color: #111827;
         }
 
-        /* 顶部工具条：全屏长方形 */
+        /* 顶部工具条 */
         .toolbar {
             position: sticky;
             top: 0;
             z-index: 10;
-
             width: 100%;
             background: #c39eff;
             border-radius: 0;
             padding: 8px 24px;
-            margin-bottom: 0;
             box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
         }
 
@@ -143,44 +139,53 @@
             flex: 2 1 220px;
         }
 
-        /* *** 优化后的移动端布局 CSS *** */
+        /* *** 移动端优化 CSS *** */
         @media (max-width: 800px) {
+            .page {
+                padding: 8px 16px 0;
+                /* 减小标题区域顶部/侧边 padding */
+            }
+
+            .subtitle {
+                margin-bottom: 8px;
+                /* 减小标题区域底部间距 */
+            }
+
+            .toolbar {
+                padding: 8px 16px 0;
+                /* 减小工具条的 padding */
+            }
+
             .toolbar-inner {
-                align-items: stretch;
-                /* 手机上底部增加一些间距，避免内容粘连 */
-                padding-bottom: 16px;
+                padding-bottom: 8px;
+                /* 减小工具条内部底部间距，让内容更紧凑 */
+                gap: 6px; /* 进一步减小元素间距 */
             }
 
             .toolbar-group {
-                /* 强制在小屏幕上垂直堆叠，每个元素占满一行 */
                 flex: 1 1 100%;
+                /* 强制在小屏幕上垂直堆叠 */
                 min-width: unset;
             }
 
-            /* 按钮组和备注也强制全宽 */
-            .toolbar-note,
             .toolbar-buttons {
-                flex: 1 1 100%;
+                /* 筛选和保存/清空按钮如果想并排，可以调整这里 */
+                flex: 1 1 100%; 
+                justify-content: space-between;
             }
-
-            .toolbar-buttons {
-                /* 确保按钮依然并排，但占满一行 */
-                flex-direction: row;
-                gap: 8px;
+            
+            .toolbar-buttons button {
+                flex: 1 1 auto; /* 让按钮平均分配空间 */
             }
         }
+        /* *** 移动端优化结束 *** */
 
-        /* *** 优化结束 *** */
-
-        /* 展示区域：整块单独背景，占满全屏 */
+        /* 展示区域 */
         .gallery {
             width: 100%;
             background: #f7eefe;
-            /* 更淡的紫色 */
             padding: 0 24px 32px;
-            /* 顶部缩小，让它和 toolbar 连在一起 */
             margin-top: 0;
-            /* 确保完全贴合 */
         }
 
 
@@ -244,23 +249,11 @@
         }
 
         .card-footer {
-            padding: 4px 0;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .card-footer button {
-            font-size: 11px;
-            padding: 4px 10px;
-        }
-
-        /* ... 保持其他样式不变 ... */
-        .card-footer {
+            /* JS 动态创建的卡片页脚 */
             padding: 4px 0;
             display: flex;
             justify-content: flex-end;
             gap: 8px;
-            /* 增加按钮间距 */
         }
 
         .card-footer button {
@@ -268,11 +261,8 @@
             padding: 4px 10px;
         }
 
-        /* ... 保持其他样式不变 ... */
-
         @media (max-width: 700px) {
             .grid {
-                /* 手机上图片网格可以更小一些 */
                 grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
                 gap: 16px;
             }
@@ -351,11 +341,7 @@
         <div class="gallery-inner">
             <div id="grid" class="grid"></div>
         </div>
-        <div class="card-footer">
-            <button class="btn-secondary edit-btn">编辑</button>
-            <button class="btn-secondary delete-btn">删除</button>
         </div>
-    </div>
 
     <script>
         // --- ASYNCHRONOUS STORAGE AND COMPRESSION FUNCTIONS ---
